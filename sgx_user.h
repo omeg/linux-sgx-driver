@@ -69,6 +69,8 @@
 	_IOW(SGX_MAGIC, 0x01, struct sgx_enclave_add_page)
 #define SGX_IOC_ENCLAVE_INIT \
 	_IOW(SGX_MAGIC, 0x02, struct sgx_enclave_init)
+#define SGX_IOC_ENABLE_FSGSBASE \
+	_IO(SGX_MAGIC, 0x03)
 
 /* SGX leaf instruction return values */
 #define SGX_SUCCESS			0
