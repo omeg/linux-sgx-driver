@@ -72,6 +72,7 @@
 #include <linux/slab.h>
 #include <linux/hashtable.h>
 #include <linux/shmem_fs.h>
+#include <asm/tlbflush.h>
 
 int sgx_get_encl(unsigned long addr, struct sgx_encl **encl)
 {
@@ -96,6 +97,16 @@ int sgx_get_encl(unsigned long addr, struct sgx_encl **encl)
 
 	up_read(&mm->mmap_sem);
 	return ret;
+}
+
+static void __enable_fsgsbase(void *v)
+{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)
+	write_cr4(read_cr4() | X86_CR4_FSGSBASE);
+#else
+	cr4_set_bits(X86_CR4_FSGSBASE);
+	__write_cr4(__read_cr4() | X86_CR4_FSGSBASE);
+#endif
 }
 
 /**
@@ -251,6 +262,26 @@ out:
 	return ret;
 }
 
+/**
+ * sgx_ioc_enable_fsgsbase - handler for %SGX_IOC_ENABLE_FSGSBASE
+ * @filep:	open file to /dev/sgx
+ * @cmd:	the command value
+ * @arg:	not used
+ *
+ * Enables FSGSBASE access in CR4.
+ *
+ * Return:
+ * 0 on success,
+ * system error on failure
+ */
+static long sgx_ioc_enable_fsgsbase(struct file *filep, unsigned int cmd,
+				   unsigned long arg)
+{
+	__enable_fsgsbase(NULL);
+	smp_call_function(__enable_fsgsbase, NULL, 1);
+	return 0;
+}
+
 long sgx_ioc_page_modpr(struct file *filep, unsigned int cmd,
 			unsigned long arg)
 {
@@ -387,6 +418,9 @@ long sgx_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 	case SGX_IOC_ENCLAVE_INIT:
 		handler = sgx_ioc_enclave_init;
 		break;
+	case SGX_IOC_ENABLE_FSGSBASE:
+		handler = sgx_ioc_enable_fsgsbase;
+		break;
 	case SGX_IOC_ENCLAVE_EMODPR:
 		handler = sgx_ioc_page_modpr;
 		break;
@@ -406,8 +440,10 @@ long sgx_ioctl(struct file *filep, unsigned int cmd, unsigned long arg)
 		return -ENOIOCTLCMD;
 	}
 
-	if (copy_from_user(data, (void __user *)arg, _IOC_SIZE(cmd)))
-		return -EFAULT;
+	if (cmd & IOC_IN) {
+		if (copy_from_user(data, (void __user *)arg, _IOC_SIZE(cmd)))
+			return -EFAULT;
+	}
 
 	ret = handler(filep, cmd, (unsigned long)((void *)data));
 	if (!ret && (cmd & IOC_OUT)) {
