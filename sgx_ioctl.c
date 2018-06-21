@@ -99,13 +99,12 @@ static int sgx_get_encl(unsigned long addr, struct sgx_encl **encl)
 	return ret;
 }
 
-static void __enable_fsgsbase(void *v)
+static void enable_fsgsbase(void *v)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 0, 0)
 	write_cr4(read_cr4() | X86_CR4_FSGSBASE);
 #else
 	cr4_set_bits(X86_CR4_FSGSBASE);
-	__write_cr4(__read_cr4() | X86_CR4_FSGSBASE);
 #endif
 }
 
@@ -271,14 +270,13 @@ out:
  * Enables FSGSBASE access in CR4.
  *
  * Return:
- * 0 on success,
- * system error on failure
+ * 0
  */
 static long sgx_ioc_enable_fsgsbase(struct file *filep, unsigned int cmd,
-				   unsigned long arg)
+				    unsigned long arg)
 {
-	__enable_fsgsbase(NULL);
-	smp_call_function(__enable_fsgsbase, NULL, 1);
+	enable_fsgsbase(NULL);
+	smp_call_function(enable_fsgsbase, NULL, true);
 	return 0;
 }
 
