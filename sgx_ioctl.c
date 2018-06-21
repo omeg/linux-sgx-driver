@@ -110,7 +110,7 @@ static void enable_fsgsbase(void *v)
 
 /**
  * sgx_ioc_enclave_create - handler for %SGX_IOC_ENCLAVE_CREATE
- * @filep:	open file to /dev/sgx
+ * @filep:	open file to /dev/isgx
  * @cmd:	the command value
  * @arg:	pointer to the &struct sgx_enclave_create
  *
@@ -148,7 +148,7 @@ static long sgx_ioc_enclave_create(struct file *filep, unsigned int cmd,
 /**
  * sgx_ioc_enclave_add_page - handler for %SGX_IOC_ENCLAVE_ADD_PAGE
  *
- * @filep:	open file to /dev/sgx
+ * @filep:	open file to /dev/isgx
  * @cmd:	the command value
  * @arg:	pointer to the &struct sgx_enclave_add_page
  *
@@ -206,7 +206,7 @@ out:
 /**
  * sgx_ioc_enclave_init - handler for %SGX_IOC_ENCLAVE_INIT
  *
- * @filep:	open file to /dev/sgx
+ * @filep:	open file to /dev/isgx
  * @cmd:	the command value
  * @arg:	pointer to the &struct sgx_enclave_init
  *
@@ -263,7 +263,7 @@ out:
 
 /**
  * sgx_ioc_enable_fsgsbase - handler for %SGX_IOC_ENABLE_FSGSBASE
- * @filep:	open file to /dev/sgx
+ * @filep:	open file to /dev/isgx
  * @cmd:	the command value
  * @arg:	not used
  *
