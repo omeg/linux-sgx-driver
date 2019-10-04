@@ -64,6 +64,7 @@
 #include <linux/file.h>
 #include <linux/highmem.h>
 #include <linux/miscdevice.h>
+#include <linux/mman.h>
 #include <linux/module.h>
 #include <linux/suspend.h>
 #include <linux/hashtable.h>
@@ -71,7 +72,7 @@
 #include <linux/platform_device.h>
 
 #define DRV_DESCRIPTION "Intel SGX Driver"
-#define DRV_VERSION "0.11"
+#define DRV_VERSION "2.5.0"
 
 MODULE_DESCRIPTION(DRV_DESCRIPTION);
 MODULE_AUTHOR("Jarkko Sakkinen <jarkko.sakkinen@linux.intel.com>");
@@ -119,7 +120,7 @@ static unsigned long sgx_get_unmapped_area(struct file *file,
 					   unsigned long pgoff,
 					   unsigned long flags)
 {
-	if (len < 2 * PAGE_SIZE || (len & (len - 1)))
+	if (len < 2 * PAGE_SIZE || (len & (len - 1)) || flags & MAP_PRIVATE)
 		return -EINVAL;
 
 	/* On 64-bit architecture, allow mmap() to exceed 32-bit encl

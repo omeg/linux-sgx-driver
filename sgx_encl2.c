@@ -169,10 +169,17 @@ struct sgx_encl_page *sgx_encl_augment(struct vm_area_struct *vma,
 		goto out;
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0))
+	ret = vmf_insert_pfn(vma, encl_page->addr, PFN_DOWN(epc_page->pa));
+	sgx_put_page(epc_va);
+	sgx_put_page(secs_va);
+	if (ret != VM_FAULT_NOPAGE) {
+#else
 	ret = vm_insert_pfn(vma, encl_page->addr, PFN_DOWN(epc_page->pa));
 	sgx_put_page(epc_va);
 	sgx_put_page(secs_va);
 	if (ret) {
+#endif
 		pr_err("sgx: vm_insert_pfn failure with ret=%d\n", ret);
 		goto out;
 	}
@@ -234,12 +241,15 @@ static int isolate_range(struct sgx_encl *encl,
 
 	address = rg->start_addr;
 	end = address + rg->nr_pages * PAGE_SIZE;
-
-	ret = sgx_encl_find(encl->mm, address, &vma);
-	if (ret || encl != vma->vm_private_data)
-		return -EINVAL;
+	down_read(&encl->mm->mmap_sem);
 
 	for (; address < end; address += PAGE_SIZE) {
+		ret = sgx_encl_find(encl->mm, address, &vma);
+		if (ret || encl != vma->vm_private_data) {
+			up_read(&encl->mm->mmap_sem);
+			return -EINVAL;
+		}
+
 		encl_page = ERR_PTR(-EBUSY);
 		while (encl_page == ERR_PTR(-EBUSY))
 			/* bring back page in case it was evicted */
@@ -247,6 +257,7 @@ static int isolate_range(struct sgx_encl *encl,
 						   SGX_FAULT_RESERVE, NULL);
 
 		if (IS_ERR(encl_page)) {
+			up_read(&encl->mm->mmap_sem);
 			sgx_err(encl, "sgx: No page found at address 0x%lx\n",
 				 address);
 			return PTR_ERR(encl_page);
@@ -261,6 +272,7 @@ static int isolate_range(struct sgx_encl *encl,
 		mutex_unlock(&encl->lock);
 	}
 
+	up_read(&encl->mm->mmap_sem);
 	return 0;
 }
 
